@@ -15,7 +15,7 @@ class Game(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def play(self):
+    def play(self, actions):
         pass
 
     @abstractmethod
