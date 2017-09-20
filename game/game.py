@@ -15,6 +15,10 @@ class Game(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def play(self):
+        pass
+
+    @abstractmethod
     def get_state(self):
         pass
 

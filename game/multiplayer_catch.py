@@ -14,8 +14,8 @@ class MultiPlayerCatch(Game):
 
 
     def reset(self):
-        
+
 
     def initialize_players(self):
         assert 1 <= self.nb_players <= 5, 'Up to 5 players supported currently'
-
+        for 
