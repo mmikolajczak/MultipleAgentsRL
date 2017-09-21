@@ -34,3 +34,11 @@ class Game(metaclass=ABCMeta):
     @abstractmethod
     def get_score(self):
         pass
+
+    @abstractmethod
+    def nb_actions(self): # for single player
+        pass
+
+    @abstractmethod
+    def nb_players(self):
+        pass

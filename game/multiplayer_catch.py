@@ -5,11 +5,12 @@ from enum import IntEnum
 
 class MultiPlayerCatch(Game):
 
-    def __init__(self, nb_players, board_size=40, food_spawn_rate=0.05):
+    def __init__(self, nb_players, board_size=40, food_spawn_rate=0.05, score_to_win=100):
         Game.__init__(self)
         assert 1 <= nb_players <= 4, 'Up to 4 players supported currently'
         self._nb_players = nb_players
         self._board_size = board_size
+        self._score_to_win = score_to_win
         self._food_spawn_rate = food_spawn_rate
         self.reset()
 
@@ -31,7 +32,7 @@ class MultiPlayerCatch(Game):
 
     @property
     def game_is_won(self):
-        raise NotImplemented('Will it be necessary? To think up.')
+        return self._current_score >= self._score_to_win
 
     def reset(self):
         self._state = np.zeros(shape=(self._board_size, self._board_size, 3))
@@ -124,7 +125,7 @@ class MultiPlayerCatch(Game):
         return self._state
 
     def get_score(self):
-        pass
+        return self._current_score
 
 
 class MPCActions(IntEnum):
