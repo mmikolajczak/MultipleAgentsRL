@@ -14,3 +14,5 @@ while True:
         break
     visualizer.visualize_state(state)
 
+
+# Note: potential problem: spawning food when flayer is in top of the board

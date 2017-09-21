@@ -14,8 +14,9 @@ class ImageStateVisualizator(Visualizator):
         return self._zoom
 
     def visualize_state(self, state):
-        screen = cv2.resize(state, None, fx=self.zoom, fy=self.zoom)
+        interpolation = cv2.INTER_CUBIC if self.zoom >= 1 else cv2.INTER_AREA
+        screen = cv2.resize(state, None, fx=self.zoom, fy=self.zoom, interpolation=interpolation)
         screen = np.rot90(screen, 1)
         cv2.imshow(self.game_name, screen)
-        cv2.waitKey(150)
+        cv2.waitKey(150) # for now give user some reasonable visual experience during watching the game
         # TODO: fps/time

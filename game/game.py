@@ -23,7 +23,12 @@ class Game(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def is_over(self):
+    def game_is_over(self):
+        pass
+
+    # might not be need but could be interesting for player
+    @abstractmethod
+    def game_is_won(self):
         pass
 
     @abstractmethod

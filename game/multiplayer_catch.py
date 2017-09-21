@@ -5,7 +5,7 @@ from enum import IntEnum
 
 class MultiPlayerCatch(Game):
 
-    def __init__(self, nb_players, board_size=40, food_spawn_rate=0.1):
+    def __init__(self, nb_players, board_size=40, food_spawn_rate=0.05):
         Game.__init__(self)
         assert 1 <= nb_players <= 4, 'Up to 4 players supported currently'
         self._nb_players = nb_players
@@ -52,6 +52,12 @@ class MultiPlayerCatch(Game):
 
     def play(self, actions):
         assert len(actions) == self._nb_players, 'Actions for all players must be provided'
+        self._update_players_positions(actions)
+        self._update_food_positions()
+        self._spawn_new_food()
+        self._update_information_about_state()
+
+    def _update_players_positions(self, actions):
         for player, action in zip(self._players, actions):
             assert action in range(len(MPCActions)), 'Invalid action value'
             # update position based on action
@@ -76,29 +82,30 @@ class MultiPlayerCatch(Game):
 
             # food catching and score update
             if [new_x, new_y] in self._foods:
-                self._foods.remove([new_y, new_y])
+                # self._foods.remove([new_y, new_y]) looks like remove uses 'is' instead of '==' so it won't work
+                del self._foods[self._foods.index([new_x, new_y])]
                 self._current_score += 1
 
             # all check done, update player state
             player.x, player.y = new_x, new_y
 
-        # food positions update
+    def _update_food_positions(self):
         for food in self._foods:
             food[1] -= 1
             if food[1] < 0:
                 self._game_is_over = True
 
-        # new food spawning
+    def _spawn_new_food(self):
         if np.random.rand() < self._food_spawn_rate:
             food_x = np.random.randint(0, self._board_size)
             food_y = self._board_size - 1
             self._foods.append([food_x, food_y])
 
-        # update_state
+    def _update_information_about_state(self):
         new_state = np.empty((self._board_size, self._board_size, 3), np.uint8)
-        new_state.fill(255) # board is white
+        new_state.fill(255)  # board is white
 
-        for food in self._foods: # ugh, items to np.array, for later upgrade
+        for food in self._foods:  # this way of setting values in numpy array can be probably optimised if needed
             new_state[food[0], food[1]] = [255, 0, 0]
 
         for player in self._players:
@@ -117,9 +124,6 @@ class MultiPlayerCatch(Game):
         return self._state
 
     def get_score(self):
-        pass
-
-    def is_over(self):
         pass
 
 
