@@ -18,9 +18,10 @@ class AgentManager:
             game.reset()
             loss = 0
 
+
             while not game.game_is_over():
-                # play an do stuff
-                
+                # play and do stuff
+
                 if visualizer:
                     state = game.get_state()
                     visualizer.visualize_state(state)
