@@ -1,24 +1,54 @@
 from game.multiplayer_catch import MultiPlayerCatch
 from visualizator.image_state_visualizator import ImageStateVisualizator
+from agent.dqnagent import DQNAgent
 import numpy as np
 
 
 def game_initial_test_demo():
-    catch_game_object = MultiPlayerCatch(2, food_spawn_rate=0.5)
-    visualizer = ImageStateVisualizator('lol', 24)
+    catch_game = MultiPlayerCatch(2, food_spawn_rate=0.5)
+    visualizer = ImageStateVisualizator('MPCatch visualization', 24)
 
     while True:
         action1 = np.random.randint(0, 5)
         action2 = np.random.randint(0, 5)
-        catch_game_object.play([action1, action2])
-        state = catch_game_object.get_state()
-        if catch_game_object.game_is_over:
+        state = catch_game.get_state()
+        catch_game.play([action1, action2])
+
+        if catch_game.game_is_over:
             break
         visualizer.visualize_state(state)
 
 
+def get_test_model1():
+    # architecture from original 'playing atari...' paper
+    # only input size is 4px lower
+    from keras.models import Sequential, Model, load_model
+    from keras.layers import Dense, Dropout, Activation, Flatten
+    from keras.layers import Convolution2D, MaxPooling2D
+    from keras.layers import Input, merge, UpSampling2D, Conv2DTranspose
+    from keras.optimizers import Adam
+    from keras.preprocessing.image import ImageDataGenerator, load_img
+    from keras.callbacks import ModelCheckpoint
+    from keras import backend as K
+    inputs = Input(shape=(80, 80, 3))
+    conv1 = Convolution2D(16, (8, 8), strides=(4, 4), activation='relu')(inputs)
+    conv2 = Convolution2D(32, (4, 4), strides=(2, 2), activation='relu')(conv1)
+    fc1 = Dense(256, activation='relu')(conv2)
+    outputs = Dense(5, activation='linear')(fc1)
+    model = Model(inputs, outputs)
+    model.compile(optimizer=Adam(lr=1e-5), loss='mse', metrics=['mse'])
+    print(model.summary())
+    return model
+
+
 def single_dqn_test_demo():
-    pass
+    catch_game_object = MultiPlayerCatch(1, food_spawn_rate=0.05)
+    visualizer = ImageStateVisualizator('MPCatch visualization', 24)
+
+    model = get_test_model1()
+
+    agent = DQNAgent(model, 10000)
+    agent.train(catch_game_object, epochs=1000, batch_size=50, gamma=0.9, visualizer=visualizer)
 
 
 def agent_manager_test_demo():
@@ -26,7 +56,8 @@ def agent_manager_test_demo():
 
 
 if __name__ == '__main__':
-    game_initial_test_demo()
+    # game_initial_test_demo()
+    single_dqn_test_demo()
 
 
 # Note: potential problem catch game problem: spawning food when flayer is in top of the board

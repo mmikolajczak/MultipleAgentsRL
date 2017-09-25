@@ -1,6 +1,7 @@
 import numpy as np
 from .game import Game
 from enum import IntEnum
+import cv2
 
 
 class MultiPlayerCatch(Game):
@@ -36,10 +37,12 @@ class MultiPlayerCatch(Game):
 
     def reset(self):
         self._state = np.zeros(shape=(self._board_size, self._board_size, 3))
+        self._previous_round_score = 0
         self._current_score = 0
         self._initialize_players()
         self._foods = [] # food is that thing that fly from the sky and agent is supposed to catch it
         self._game_is_over = False
+        self._update_information_about_state()
 
     def _initialize_players(self):
         available_colors = [[0, 255, 0], [0, 0, 255], [0, 255, 255], [255, 0, 255]] # TODO: magic const
@@ -60,6 +63,7 @@ class MultiPlayerCatch(Game):
 
     def _update_players_positions(self, actions):
         for player, action in zip(self._players, actions):
+            print(action)
             assert action in range(len(MPCActions)), 'Invalid action value'
             # update position based on action
             if action == MPCActions.IDLE:
@@ -82,6 +86,7 @@ class MultiPlayerCatch(Game):
                 new_x, new_y = player.x, player.y
 
             # food catching and score update
+            self._previous_round_score = self._current_score
             if [new_x, new_y] in self._foods:
                 # self._foods.remove([new_y, new_y]) looks like remove uses 'is' instead of '==' so it won't work
                 del self._foods[self._foods.index([new_x, new_y])]
@@ -122,10 +127,21 @@ class MultiPlayerCatch(Game):
         return [new_x, new_y] in other_players_positions
 
     def get_state(self):
-        return self._state
+        # resized for nn - temporary
+        #return self._state
+        return cv2.resize(self._state, None, None, fx=2, fy=2)
 
     def get_score(self):
         return self._current_score
+
+    # This one shouldn't be here
+    def get_reward(self):
+        if self.game_is_over:
+            return -10
+        elif self._previous_round_score < self._current_score:
+            return self._current_score - self._previous_round_score
+        else:
+            return 0
 
 
 class MPCActions(IntEnum):

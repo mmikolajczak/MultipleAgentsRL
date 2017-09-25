@@ -15,5 +15,5 @@ class Memory(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_sample(self, sample_size):
+    def get_batch(self, sample_size):
         pass

@@ -42,3 +42,7 @@ class Game(metaclass=ABCMeta):
     @abstractmethod
     def nb_players(self):
         pass
+
+    @abstractmethod
+    def get_reward(self):
+        pass

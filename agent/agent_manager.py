@@ -18,7 +18,6 @@ class AgentManager:
             game.reset()
             loss = 0
 
-
             while not game.game_is_over():
                 # play and do stuff
 
