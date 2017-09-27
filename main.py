@@ -5,7 +5,7 @@ import numpy as np
 
 
 def game_initial_test_demo():
-    catch_game = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.5)
+    catch_game = MultiPlayerCatch(2, board_size=20, food_spawn_rate=1)
     visualizer = ImageStateVisualizator('MPCatch visualization', 2)
 
     while True:
@@ -42,7 +42,7 @@ def get_test_model1():
 
 def single_dqn_test_demo():
     catch_game_object = MultiPlayerCatch(1, board_size=20, food_spawn_rate=0.05)
-    visualizer = ImageStateVisualizator('MPCatch visualization', 1)
+    visualizer = ImageStateVisualizator('MPCatch visualization', 10)
 
     model = get_test_model1()
 
@@ -80,7 +80,7 @@ def catch_contrib_test():
 
 
 if __name__ == '__main__':
-    # game_initial_test_demo()
+    #game_initial_test_demo()
     single_dqn_test_demo()
     #catch_contrib_test()
 
