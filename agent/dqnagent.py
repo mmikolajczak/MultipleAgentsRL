@@ -63,7 +63,7 @@ class DQNAgent(Agent):
                 # update exploration/exploitation ratio
                 if epsilon > final_epsilon and epsilon >= observe:
                     epsilon -= delta
-                t2 = default_timer()
+                #t2 = default_timer()
                 #print('Time for ingame iteration:', t2-t1) ~0.35, half of this time is on get batch
                 print('Training, epoch: {}, loss: {}, game score: {}, total wins: {}'.format(epoch,
                                                                                              loss,
