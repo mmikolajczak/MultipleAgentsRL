@@ -1,13 +1,14 @@
 from .agent import Agent
 import numpy as np
-from memory.experiance_replay import SimpleExperienceReplay
+from memory.experiance_replay import ExperienceReplay
+from timeit import default_timer
 
 
 class DQNAgent(Agent):
 
     def __init__(self, model, memory_size): # TODO memory/experience replay
         Agent.__init__(self, model)
-        self._memory = SimpleExperienceReplay(memory_size)
+        self._memory = ExperienceReplay(memory_size)
 
     def train(self, game, epochs=1000, batch_size=50, gamma=0.9, epsilon=[1, 0.1], epsilon_rate=0.5, observe=0,
               visualizer=None, reset_memory=False, save_model=False):
@@ -21,6 +22,7 @@ class DQNAgent(Agent):
             final_epsilon = epsilon
 
         for epoch in range(epochs):
+
             game.reset()
             loss = 0
 
@@ -28,27 +30,32 @@ class DQNAgent(Agent):
             state = game.get_state()
 
             while not game_over:
+                #t1 = default_timer()
                 if np.random.random() < epsilon:
                     action = np.random.randint(0, game.nb_actions)
                 else:
-                    print(np.expand_dims(state, axis=0).shape)
                     q_values = self._model.predict(np.expand_dims(state, axis=0))
-                    print(q_values.shape)
                     action = np.argmax(q_values)
+
+                if visualizer:
+                    visualizer.visualize_state(state)
 
                 game.play([action])
                 reward = game.get_reward()
                 next_state = game.get_state()
-                transistion = [state, action, next_state, reward]
+                game_over = game.game_is_over
+                transistion = [state, action, reward, next_state, game_over]
                 self._memory.remember(*transistion)
 
                 state = next_state
 
-                if epoch >= observe:
-                    batch = self._memory.get_batch(batch_size, g) #???
+                if epoch >= observe and len(self._memory) >= batch_size:
+                    batch = self._memory.get_batch(batch_size, self._model, gamma=0.9)
                     if batch:
                         # do other stuff
-                        loss += float(self._model.train_on_batch(features, targets))
+                        inputs, targets = batch
+                        tmp = self._model.train_on_batch(inputs, targets)[0]
+                        loss += float(tmp)
 
                 if game.game_is_won:
                     win_count += 1
@@ -56,8 +63,14 @@ class DQNAgent(Agent):
                 # update exploration/exploitation ratio
                 if epsilon > final_epsilon and epsilon >= observe:
                     epsilon -= delta
+                t2 = default_timer()
+                #print('Time for ingame iteration:', t2-t1) ~0.35, half of this time is on get batch
+                print('Training, epoch: {}, loss: {}, game score: {}, total wins: {}'.format(epoch,
+                                                                                             loss,
+                                                                                             game.get_score(),
+                                                                                             win_count))
 
-                print('Training, epoch: {}, loss: {}, wins: {}'.format(epoch, loss, win_count))
+        self._model.save('final.h5')
 
     def play(self, game, epochs, epsilon=0, visualizer=None):
         win_count = 0

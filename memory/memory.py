@@ -10,8 +10,13 @@ class Memory(metaclass=ABCMeta):
     def capacity(self):
         return self._capacity
 
+    @property
     @abstractmethod
-    def remember(self, state, action, reward, next_state):
+    def __len__(self):
+        pass
+
+    @abstractmethod
+    def remember(self, *args):
         pass
 
     @abstractmethod

@@ -6,7 +6,7 @@ import cv2
 
 class MultiPlayerCatch(Game):
 
-    def __init__(self, nb_players, board_size=40, food_spawn_rate=0.05, score_to_win=100):
+    def __init__(self, nb_players, board_size=40, food_spawn_rate=0.05, score_to_win=10):
         Game.__init__(self)
         assert 1 <= nb_players <= 4, 'Up to 4 players supported currently'
         self._nb_players = nb_players
@@ -42,6 +42,7 @@ class MultiPlayerCatch(Game):
         self._initialize_players()
         self._foods = [] # food is that thing that fly from the sky and agent is supposed to catch it
         self._game_is_over = False
+        self._cnt = 0 # used for speed management, players are 3 times faster than that dropping stuff
         self._update_information_about_state()
 
     def _initialize_players(self):
@@ -57,13 +58,15 @@ class MultiPlayerCatch(Game):
     def play(self, actions):
         assert len(actions) == self._nb_players, 'Actions for all players must be provided'
         self._update_players_positions(actions)
-        self._update_food_positions()
-        self._spawn_new_food()
+        if self._cnt % 3 == 0:
+            self._update_food_positions()
+            self._spawn_new_food()
         self._update_information_about_state()
+        self._cnt += 1
 
     def _update_players_positions(self, actions):
         for player, action in zip(self._players, actions):
-            print(action)
+            # print(action)
             assert action in range(len(MPCActions)), 'Invalid action value'
             # update position based on action
             if action == MPCActions.IDLE:
@@ -102,7 +105,7 @@ class MultiPlayerCatch(Game):
                 self._game_is_over = True
 
     def _spawn_new_food(self):
-        if np.random.rand() < self._food_spawn_rate:
+        if np.random.rand() < self._food_spawn_rate or not len(self._foods):
             food_x = np.random.randint(0, self._board_size)
             food_y = self._board_size - 1
             self._foods.append([food_x, food_y])
@@ -129,7 +132,7 @@ class MultiPlayerCatch(Game):
     def get_state(self):
         # resized for nn - temporary
         #return self._state
-        return cv2.resize(self._state, None, None, fx=2, fy=2)
+        return cv2.resize(self._state, None, None, fx=4, fy=4)
 
     def get_score(self):
         return self._current_score
