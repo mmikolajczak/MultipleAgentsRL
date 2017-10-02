@@ -11,7 +11,7 @@ class DQNAgent(Agent):
         self._memory = ExperienceReplay(memory_size)
 
     def train(self, game, epochs=1000, batch_size=50, gamma=0.9, epsilon=[1, 0.1], epsilon_rate=0.5, observe=0,
-              visualizer=None, reset_memory=False, save_model=False):
+              visualizer=None, recorder=None, reset_memory=False, save_model=False):
         win_count = 0
 
         if type(epsilon) in {tuple, list}:
@@ -40,6 +40,11 @@ class DQNAgent(Agent):
                 if visualizer:
                     visualizer.visualize_state(state)
 
+                if recorder:
+                    additional_info = {'game_no': epoch + 1, 'game_name': game.name, 'game_score': game.get_score()}
+                    recorder.additional_game_info = additional_info
+                    recorder.record_state(state)
+
                 game.play([action])
                 reward = game.get_reward()
                 next_state = game.get_state()
@@ -57,8 +62,6 @@ class DQNAgent(Agent):
                         tmp = self._model.train_on_batch(inputs, targets)[0]
                         loss += float(tmp)
 
-                if game.game_is_won:
-                    win_count += 1
 
                 # update exploration/exploitation ratio
                 if epsilon > final_epsilon and epsilon >= observe:
@@ -69,10 +72,13 @@ class DQNAgent(Agent):
                                                                                              loss,
                                                                                              game.get_score(),
                                                                                              win_count))
+            if game.game_is_won:
+                win_count += 1
 
-        self._model.save('final.h5')
+            if epoch % 500 == 0:
+                self._model.save('final.h5')
 
-    def play(self, game, epochs, epsilon=0, visualizer=None):
+    def play(self, game, epochs, epsilon=0, visualizer=None, recorder=None):
         win_count = 0
         # memory?
 
@@ -87,10 +93,10 @@ class DQNAgent(Agent):
                 if np.random.random() < epsilon:
                     action = np.random.randint(0, game.nb_actions)
                 else:
-                    q_values = self._model.predict(state)[0]
+                    q_values = self._model.predict(np.expand_dims(state, axis=0))[0]
                     action = np.argmax(q_values)
 
-                game.play(action)
+                game.play([action])
                 state = game.get_state()
 
                 game_over = game.game_is_over
@@ -98,5 +104,10 @@ class DQNAgent(Agent):
                 if visualizer:
                     visualizer.visualize_state(state)
 
-            if game.game_is_won():
+                if recorder:
+                    additional_info = {'game_no': epoch + 1, 'game_name': game.name, 'game_score': game.get_score()}
+                    recorder.additional_game_info = additional_info
+                    recorder.record_state(state)
+
+            if game.game_is_won:
                 win_count += 1

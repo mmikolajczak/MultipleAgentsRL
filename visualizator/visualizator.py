@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class Visualizator:
+class Visualizator(metaclass=ABCMeta):
 
     def __init__(self, game_name):
         self._game_name = game_name
