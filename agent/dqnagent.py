@@ -15,14 +15,13 @@ class DQNAgent(Agent):
         win_count = 0
 
         if type(epsilon) in {tuple, list}:
-            delta = (epsilon[0] - epsilon[1]) / (epochs * epsilon_rate) #???
+            delta = (epsilon[0] - epsilon[1]) / (epochs * epsilon_rate)
             final_epsilon = epsilon[0]
             epsilon = epsilon[1]
         else:
             final_epsilon = epsilon
 
         for epoch in range(epochs):
-
             game.reset()
             loss = 0
 
@@ -49,6 +48,7 @@ class DQNAgent(Agent):
                 reward = game.get_reward()
                 next_state = game.get_state()
                 game_over = game.game_is_over
+
                 transistion = [state, action, reward, next_state, game_over]
                 self._memory.remember(*transistion)
 
@@ -67,7 +67,6 @@ class DQNAgent(Agent):
                 if epsilon > final_epsilon and epsilon >= observe:
                     epsilon -= delta
                 #t2 = default_timer()
-                #print('Time for ingame iteration:', t2-t1) ~0.35, half of this time is on get batch
                 print('Training, epoch: {}, loss: {}, game score: {}, total wins: {}'.format(epoch,
                                                                                              loss,
                                                                                              game.get_score(),
@@ -80,7 +79,6 @@ class DQNAgent(Agent):
 
     def play(self, game, epochs, epsilon=0, visualizer=None, recorder=None):
         win_count = 0
-        # memory?
 
         for epoch in range(epochs):
             # restoration/initialization of initial environment state

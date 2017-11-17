@@ -131,8 +131,10 @@ class MultiPlayerCatch(Game):
 
     def get_state(self):
         # resized for nn - temporary
-        #return self._state
-        return cv2.resize(self._state, None, None, fx=4, fy=4)
+        # state_gray = cv2.cvtColor(self._state, cv2.COLOR_BGR2GRAY)
+        state_gray = self._state
+        resized = cv2.resize(state_gray, None, None, fx=4, fy=4)
+        return resized
 
     def get_score(self):
         return self._current_score
@@ -140,7 +142,7 @@ class MultiPlayerCatch(Game):
     # This one shouldn't be here
     def get_reward(self):
         if self.game_is_over:
-            return -10
+            return -2
         elif self._previous_round_score < self._current_score:
             return self._current_score - self._previous_round_score
         else:
