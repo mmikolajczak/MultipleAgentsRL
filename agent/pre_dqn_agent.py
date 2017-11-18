@@ -28,15 +28,15 @@ class DQNPREAgent(Agent):
             game_over = False
             state = game.get_state()
 
+            last_frames = np.zeros((80, 80, 6), dtype=np.uint8)  # for using multiple frames as memory state
+
             while not game_over:
                 #t1 = default_timer()
                 if np.random.random() < epsilon:
                     action = np.random.randint(0, game.nb_actions)
                 else:
-                    import cv2
-                    cv2.imshow('kek', state)
-                    cv2.waitKey()
-                    q_values = self._model.predict(np.expand_dims(state, axis=0))
+
+                    q_values = self._model.predict(np.expand_dims(last_frames, axis=0))
                     action = np.argmax(q_values)
 
                 if visualizer:
@@ -52,8 +52,13 @@ class DQNPREAgent(Agent):
                 next_state = game.get_state()
                 game_over = game.game_is_over
 
-                transistion = [state, action, reward, next_state]
-                error = self._get_batch_preds_and_errors([(0, transistion)])
+                last_frames = np.roll(last_frames, axis=2, shift=-1)
+                last_frames[:, :, -1] = state
+                next_frames = np.roll(last_frames, axis=2, shift=-1)
+                next_frames[:, :, -1] = next_state
+
+                transistion = [last_frames, action, reward, next_frames]
+                error = self._get_batch_preds_and_errors([(0, transistion)])[2][0]
                 self._memory.remember(error, transistion)
 
                 state = next_state
@@ -124,7 +129,7 @@ class DQNPREAgent(Agent):
                 win_count += 1
 
     def _get_batch_preds_and_errors(self, batch):  # batch consist of tuples (idx, transistion)
-        nn_input_shape = self._model.layers[0].input_shape  # wild guess, we shall see if its work
+        nn_input_shape = (80, 80, 6)#self._model.layers[0].input_shape  # wild guess, we shall see if its work (doesn't, magic const)
         no_state = np.zeros(nn_input_shape)
         gamma = 0.9
 

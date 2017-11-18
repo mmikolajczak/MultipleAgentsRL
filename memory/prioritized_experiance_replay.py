@@ -43,4 +43,4 @@ class ProportionalPER(Memory):  # stored as ( s, a, r, s_ ) in SumTree
         self._add(error, sample)
 
     def __len__(self):
-        return self.tree.total()
+        return int(self.tree.total())
