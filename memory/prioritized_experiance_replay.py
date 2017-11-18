@@ -3,19 +3,19 @@ from .sum_tree import SumTree
 import random
 
 
-class ProportionalPER(Memory):   # stored as ( s, a, r, s_ ) in SumTree, proportional version of PER
+class ProportionalPER(Memory):  # stored as ( s, a, r, s_ ) in SumTree
+    e = 0.01
+    a = 0.6
 
-    def __init__(self, capacity, alpha, epsilon):
+    def __init__(self, capacity):
         Memory.__init__(self, capacity)
         self.tree = SumTree(capacity)
-        self.alpha = alpha
-        self.epsilon = epsilon
 
-    def _getPriority(self, error):
-        return (error + self.epsilon) ** self.alpha
+    def _get_priority(self, error):
+        return (error + self.e) ** self.a
 
-    def add(self, error, sample):
-        p = self._getPriority(error)
+    def _add(self, error, sample):
+        p = self._get_priority(error)
         self.tree.add(p, sample)
 
     def _sample(self, n):
@@ -32,15 +32,15 @@ class ProportionalPER(Memory):   # stored as ( s, a, r, s_ ) in SumTree, proport
 
         return batch
 
-    def get_batch(self, sample_size):
-        return [data for idx, data in self._sample(sample_size)]
+    def get_batch(self, batch_size):
+        return self._sample(batch_size)
+
+    def update(self, idx, error):
+        p = self._get_priority(error)
+        self.tree.update(idx, p)
+
+    def remember(self, error, sample):
+        self._add(error, sample)
 
     def __len__(self):
         return self.tree.total()
-
-    def remember(self, state):
-        self.add(None, state) #TODO
-
-    def update(self, idx, error):
-        p = self._getPriority(error)
-        self.tree.update(idx, p)

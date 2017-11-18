@@ -57,10 +57,9 @@ class DQNAgent(Agent):
                 if epoch >= observe and len(self._memory) >= batch_size:
                     batch = self._memory.get_batch(batch_size, self._model, gamma=0.9)
                     if batch:
-                        # do other stuff
                         inputs, targets = batch
-                        tmp = self._model.train_on_batch(inputs, targets)[0]
-                        loss += float(tmp)
+                        train_loss = self._model.train_on_batch(inputs, targets)[0]
+                        loss += float(train_loss)
 
 
                 # update exploration/exploitation ratio

@@ -1,7 +1,8 @@
 from game.multiplayer_catch import MultiPlayerCatch
 from visualizator.image_state_visualizator import ImageStateVisualizator
 from recorder.image_state_recorder import ImageStateRecorder
-from agent.dqnagent import DQNAgent
+from agent.dqn_agent import DQNAgent
+from agent.pre_dqn_agent import DQNPREAgent
 import numpy as np
 
 
@@ -61,14 +62,21 @@ def single_dqn_test_demo():
     agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=visualizer)  # current version
 
 
+def PRE_dqn_training():
+    model = get_test_model1()
+    agent = DQNPREAgent(model, 100000)
+
+    catch_game_object = MultiPlayerCatch(1, board_size=20, food_spawn_rate=0.05)
+    agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None)
+
+
 def agent_manager_test_demo():
     pass
 
 
 if __name__ == '__main__':
     #game_initial_test_demo()
-    single_dqn_test_demo()
+    #single_dqn_test_demo()
     #catch_contrib_test()
+    PRE_dqn_training()
 
-
-# Note: potential problem catch game problem: spawning food when flayer is in top of the board
