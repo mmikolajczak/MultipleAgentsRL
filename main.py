@@ -23,10 +23,10 @@ def game_initial_test_demo():
         visualizer.visualize_state(state)
 
 
-def get_test_model1():
+def get_test_model(nb_players):
     # architecture from original 'playing atari...' paper
     # only input size is 4px lower
-    from keras.models import Model, load_model
+    from keras.models import Model
     from keras.layers import Dense, Flatten
     from keras.layers import Convolution2D
     from keras.layers import Input
@@ -37,7 +37,7 @@ def get_test_model1():
     conv2 = Convolution2D(32, (4, 4), strides=(2, 2), activation='relu')(conv1)
     flatten = Flatten()(conv2)
     fc1 = Dense(256, activation='relu')(flatten)
-    outputs = Dense(5, activation='linear')(fc1)
+    outputs = Dense(nb_players * 5, activation='linear')(fc1)
     model = Model(inputs, outputs)
     model.compile(optimizer=Adam(lr=1e-5), loss='mse', metrics=['mse'])
     print(model.summary())
@@ -69,14 +69,37 @@ def PRE_dqn_training():
         try:
             model = load_trained_model(config['BACKUP_MODEL_PATH'])
         except (FileNotFoundError, OSError):
-            model = get_test_model1()
+            model = get_test_model(1)
         try:
             last_epoch_stats_file_path = get_path_to_file_last_in_numerical_order(config['BACKUP_STATS_DIR_PATH'])
             restored_train_stats = load_json_file(last_epoch_stats_file_path)
         except (FileNotFoundError, OSError):
             restored_train_stats = None
     else:
-        model = get_test_model1()
+        model = get_test_model(1)
+        restored_train_stats = None
+
+    agent = DQNPREAgent(model, 100000)
+    agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None,
+                restored_training_stats=restored_train_stats)
+
+
+def PRE_dqn_training_two_players():
+    catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
+
+    config = load_json_file('config.json')
+    if config['RESTORE_BACKUP']:
+        try:
+            model = load_trained_model(config['BACKUP_MODEL_PATH'])
+        except (FileNotFoundError, OSError):
+            model = get_test_model(2)
+        try:
+            last_epoch_stats_file_path = get_path_to_file_last_in_numerical_order(config['BACKUP_STATS_DIR_PATH'])
+            restored_train_stats = load_json_file(last_epoch_stats_file_path)
+        except (FileNotFoundError, OSError):
+            restored_train_stats = None
+    else:
+        model = get_test_model(2)
         restored_train_stats = None
 
     agent = DQNPREAgent(model, 100000)
@@ -89,4 +112,5 @@ if __name__ == '__main__':
     #single_dqn_test_demo()
     #catch_contrib_test()
     PRE_dqn_training()
+    #PRE_dqn_training_two_players()
 

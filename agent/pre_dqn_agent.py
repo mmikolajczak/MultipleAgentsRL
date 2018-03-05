@@ -43,11 +43,10 @@ class DQNPREAgent(Agent):
             while not game_over:
                 #t1 = default_timer()
                 if np.random.random() < epsilon:
-                    action = np.random.randint(0, game.nb_actions)
+                    actions = [np.random.randint(0, game.nb_actions) for _ in range(game.nb_players)]
                 else:
-
                     q_values = self._model.predict(np.expand_dims(last_frames, axis=0))
-                    action = np.argmax(q_values)
+                    actions = [np.argmax(q_values)]
 
                 if visualizer:
                     visualizer.visualize_state(state)
@@ -57,7 +56,7 @@ class DQNPREAgent(Agent):
                     recorder.additional_game_info = additional_info
                     recorder.record_state(state)
 
-                game.play([action])
+                game.play(actions)
                 reward = game.get_reward()
                 next_state = game.get_state()
                 game_over = game.game_is_over
