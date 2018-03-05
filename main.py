@@ -3,6 +3,8 @@ from visualizator.image_state_visualizator import ImageStateVisualizator
 from recorder.image_state_recorder import ImageStateRecorder
 from agent.dqn_agent import DQNAgent
 from agent.pre_dqn_agent import DQNPREAgent
+from utils.json import load_json_file
+from utils.others import get_path_to_file_last_in_numerical_order
 import numpy as np
 
 
@@ -53,25 +55,33 @@ def single_dqn_test_demo():
     visualizer = ImageStateVisualizator('MPCatch visualization', 10)
     recorder = ImageStateRecorder('MPCatch_rgb_trained_network_results')
 
-    #model = get_test_model1()
     model = load_trained_model('final.h5')
 
     agent = DQNAgent(model, 10000)
-    #agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None)
-    #agent.play(catch_game_object, 100,  visualizer=visualizer)
     agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=visualizer)  # current version
 
 
 def PRE_dqn_training():
-    model = get_test_model1()
-    agent = DQNPREAgent(model, 100000)
-
     catch_game_object = MultiPlayerCatch(1, board_size=20, food_spawn_rate=0.05)
-    agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None)
 
+    config = load_json_file('config.json')
+    if config['RESTORE_BACKUP']:
+        try:
+            model = load_trained_model(config['BACKUP_MODEL_PATH'])
+        except (FileNotFoundError, OSError):
+            model = get_test_model1()
+        try:
+            last_epoch_stats_file_path = get_path_to_file_last_in_numerical_order(config['BACKUP_STATS_DIR_PATH'])
+            restored_train_stats = load_json_file(last_epoch_stats_file_path)
+        except (FileNotFoundError, OSError):
+            restored_train_stats = None
+    else:
+        model = get_test_model1()
+        restored_train_stats = None
 
-def agent_manager_test_demo():
-    pass
+    agent = DQNPREAgent(model, 100000)
+    agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None,
+                restored_training_stats=restored_train_stats)
 
 
 if __name__ == '__main__':

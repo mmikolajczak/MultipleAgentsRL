@@ -1,7 +1,10 @@
 from .agent import Agent
 import numpy as np
 from memory.prioritized_experiance_replay import ProportionalPER
+import os
+import os.path as osp
 from timeit import default_timer
+from utils.json import save_json_file
 
 
 class DQNPREAgent(Agent):
@@ -11,8 +14,15 @@ class DQNPREAgent(Agent):
         self._memory = ProportionalPER(memory_size)
 
     def train(self, game, epochs=1000, batch_size=50, gamma=0.9, epsilon=[1, 0.1], epsilon_rate=0.5, observe=0,
-              visualizer=None, recorder=None, reset_memory=False, save_model=False):
-        win_count = 0
+              visualizer=None, recorder=None, reset_memory=False, save_model=False, restored_training_stats=None,
+              backup_model_save_path=None, backup_stats_save_path=None):
+
+        backup_model_save_path = backup_model_save_path if backup_model_save_path else './backup_model.h5'
+        backup_stats_save_path = backup_stats_save_path if backup_stats_save_path else './backup_stats'
+        os.makedirs(backup_stats_save_path, exist_ok=True)
+
+        win_count = restored_training_stats['win_count'] if restored_training_stats else 0
+        start_epoch = restored_training_stats['epoch'] + 1 if restored_training_stats else 0
 
         if type(epsilon) in {tuple, list}:
             delta = (epsilon[0] - epsilon[1]) / (epochs * epsilon_rate)
@@ -21,7 +31,7 @@ class DQNPREAgent(Agent):
         else:
             final_epsilon = epsilon
 
-        for epoch in range(epochs):
+        for epoch in range(start_epoch, epochs):
             game.reset()
             loss = 0
 
@@ -90,8 +100,18 @@ class DQNPREAgent(Agent):
             if game.game_is_won:
                 win_count += 1
 
+            # saving results in case of crashes/power off/zombie apocalypse/etc.
+            epoch_stats = {
+                    'epoch': epoch,
+                    'loss': loss,
+                    'game_score': game.get_score(),
+                    'win_count': win_count
+            }
+            current_epoch_file_path = osp.join(backup_stats_save_path, f'epoch{epoch}.json')
+            save_json_file(current_epoch_file_path, epoch_stats)
+
             if epoch % 500 == 0:
-                self._model.save('backup_model.h5')
+                self._model.save(backup_model_save_path)
 
         self._model.save('final_model.h5')
 
