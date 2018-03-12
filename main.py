@@ -4,6 +4,7 @@ from recorder.image_state_recorder import ImageStateRecorder
 from agent.dqn_agent import DQNAgent
 from agent.pre_dqn_agent import DQNPREAgent
 from agent.pre_dqn_one_net_multiple_players import DQNPREMultiplayerAgent
+from agent.pre_dqn_two_nets_multiple_players import DQNPREMMultiplayerMultinetAgent
 from utils.json import load_json_file
 from utils.others import get_path_to_file_last_in_numerical_order
 import numpy as np
@@ -85,7 +86,30 @@ def PRE_dqn_training():
                 restored_training_stats=restored_train_stats)
 
 
-def PRE_dqn_training_two_players():
+def PRE_dqn_training_one_net_two_players():
+    catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
+
+    config = load_json_file('config.json')
+    if config['RESTORE_BACKUP']:
+        try:
+            model = load_trained_model(config['BACKUP_MODEL_PATH'])
+        except (FileNotFoundError, OSError):
+            model = get_test_model(2)
+        try:
+            last_epoch_stats_file_path = get_path_to_file_last_in_numerical_order(config['BACKUP_STATS_DIR_PATH'])
+            restored_train_stats = load_json_file(last_epoch_stats_file_path)
+        except (FileNotFoundError, OSError, StopIteration):
+            restored_train_stats = None
+    else:
+        model = get_test_model(2)
+        restored_train_stats = None
+
+    agent = DQNPREMultiplayerAgent(model, 100000)
+    agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None,
+                restored_training_stats=restored_train_stats)
+
+
+def PRE_dqn_training_two_nets_two_players():
     catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
 
     config = load_json_file('config.json')
@@ -113,5 +137,6 @@ if __name__ == '__main__':
     #single_dqn_test_demo()
     #catch_contrib_test()
     #PRE_dqn_training()
-    PRE_dqn_training_two_players()
+    #PRE_dqn_training_one_net_two_players()
+    PRE_dqn_training_two_nets_two_players()
 

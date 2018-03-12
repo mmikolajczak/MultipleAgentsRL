@@ -7,19 +7,24 @@ from timeit import default_timer
 from utils.json import save_json_file
 
 
-class DQNPREMultiplayerAgent(Agent):
-
-    def __init__(self, model, memory_size):
-        Agent.__init__(self, model)
+class DQNPREMMultiplayerMultinetAgent(Agent):
+    def __init__(self, memory_size, models=None, nb_models=None, model_generator=None):
+        Agent.__init__(self, None)
+        self._model_gen = model_generator
+        if models:
+            self._models = models
+        else:
+            self._models = [model_generator() for _ in range(nb_models)]
         self._memory = ProportionalPER(memory_size)
 
     def train(self, game, epochs=1000, batch_size=50, gamma=0.9, epsilon=[1, 0.1], epsilon_rate=0.5, observe=0,
               visualizer=None, recorder=None, reset_memory=False, save_model=False, restored_training_stats=None,
-              backup_model_save_path=None, backup_stats_save_path=None):
+              backup_models_save_dir_path=None, backup_stats_save_dir_path=None):
 
-        backup_model_save_path = backup_model_save_path if backup_model_save_path else './backup_model.h5'
-        backup_stats_save_path = backup_stats_save_path if backup_stats_save_path else './backup_stats'
-        os.makedirs(backup_stats_save_path, exist_ok=True)
+        backup_models_save_dir_path = backup_models_save_dir_path if backup_models_save_dir_path else './backup_models'
+        backup_stats_save_dir_path = backup_stats_save_dir_path if backup_stats_save_dir_path else './backup_stats'
+        os.makedirs(backup_models_save_dir_path, exist_ok=True)
+        os.makedirs(backup_stats_save_dir_path, exist_ok=True)
 
         win_count = restored_training_stats['win_count'] if restored_training_stats else 0
         start_epoch = restored_training_stats['epoch'] + 1 if restored_training_stats else 0
@@ -45,9 +50,10 @@ class DQNPREMultiplayerAgent(Agent):
                 if np.random.random() < epsilon:
                     actions = [np.random.randint(0, game.nb_actions) for _ in range(game.nb_players)]
                 else:
-                    q_values = self._model.predict(np.expand_dims(last_frames, axis=0))[0]  # getting rid of additional nb_samples dimension in predict
-                    actions = [np.argmax(q_values[player_idx * game.nb_actions:
-                    (player_idx + 1) * game.nb_actions]) for player_idx in range(game.nb_players)]
+                    net_input_ = np.expand_dims(last_frames, axis=0)
+                    q_values = [model.predict(net_input_)[0] for model in
+                                self._models]  # [0] -  getting rid of additional nb_samples dimension in predict
+                    actions = np.array([np.argmax(single_net_q_values) for single_net_q_values in q_values])
                 # print(actions)
 
                 if visualizer:
@@ -88,26 +94,25 @@ class DQNPREMultiplayerAgent(Agent):
                         batch_train_loss = self._model.train_on_batch(X, y)[0]
                         loss += float(batch_train_loss)
 
-
                 # update exploration/exploitation ratio
                 if epsilon > final_epsilon and epsilon >= observe:
                     epsilon -= delta
-                #t2 = default_timer()
+                # t2 = default_timer()
                 print('Training, epoch: {}, loss: {}, game score: {}, total wins: {}'.format(epoch,
                                                                                              loss,
                                                                                              game.get_score(),
                                                                                              win_count))
 
-                #print('Time elapsed:', default_timer() - t1)
+                # print('Time elapsed:', default_timer() - t1)
             if game.game_is_won:
                 win_count += 1
 
             # saving results in case of crashes/power off/zombie apocalypse/etc.
             epoch_stats = {
-                    'epoch': epoch,
-                    'loss': loss,
-                    'game_score': game.get_score(),
-                    'win_count': win_count
+                'epoch': epoch,
+                'loss': loss,
+                'game_score': game.get_score(),
+                'win_count': win_count
             }
             current_epoch_file_path = osp.join(backup_stats_save_path, f'epoch{epoch}.json')
             save_json_file(current_epoch_file_path, epoch_stats)
@@ -150,8 +155,11 @@ class DQNPREMultiplayerAgent(Agent):
             if game.game_is_won:
                 win_count += 1
 
-    def _get_batch_preds_and_errors(self, batch, env_possible_actions, env_players):  # batch consist of tuples (idx, transistion)
-        nn_input_shape = (80, 80, 6)#self._model.layers[0].input_shape  # wild guess, we shall see if its work (doesn't, magic const)
+    # TODO: Much TODO
+    def _get_batch_preds_and_errors(self, batch, env_possible_actions,
+                                    env_players):  # batch consist of tuples (idx, transistion)
+        nn_input_shape = (
+        80, 80, 6)  # self._model.layers[0].input_shape  # wild guess, we shall see if its work (doesn't, magic const)
         no_state = np.zeros(nn_input_shape)
         gamma = 0.9
 
@@ -161,7 +169,7 @@ class DQNPREMultiplayerAgent(Agent):
         preds = self._model.predict(states)
         next_preds = self._model.predict(next_states)
 
-        x = np.zeros(((len(batch), ) + nn_input_shape))
+        x = np.zeros(((len(batch),) + nn_input_shape))
         y = np.zeros((len(batch), env_possible_actions * env_players))
         errors = np.zeros(len(batch))
 
@@ -193,3 +201,4 @@ class DQNPREMultiplayerAgent(Agent):
 
         return x, y, errors
         # TODO move gamma, etc where they should actually be, not as consts/magics in script
+
