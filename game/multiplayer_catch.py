@@ -66,7 +66,6 @@ class MultiPlayerCatch(Game):
 
     def _update_players_positions(self, actions):
         for player, action in zip(self._players, actions):
-            # print(action)
             assert action in range(len(MPCActions)), 'Invalid action value'
             # update position based on action
             if action == MPCActions.IDLE:
@@ -132,7 +131,6 @@ class MultiPlayerCatch(Game):
     def get_state(self):
         # resized for nn - temporary
         state_gray = cv2.cvtColor(self._state, cv2.COLOR_BGR2GRAY)
-        #state_gray = self._state
         resized = cv2.resize(state_gray, None, None, fx=4, fy=4)
         return resized
 
