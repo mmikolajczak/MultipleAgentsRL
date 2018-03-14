@@ -9,6 +9,7 @@ from utils.json import load_json_file
 from utils.others import get_path_to_file_last_in_numerical_order
 import numpy as np
 import enum
+import os.path as osp
 
 
 def game_initial_test_demo():
@@ -90,7 +91,7 @@ def PRE_dqn_training():
 def PRE_dqn_training_one_net_two_players():
     catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
 
-    config = load_json_file('config.json')
+    config = load_json_file('config_multiplayer_one_net.json')
     if config['RESTORE_BACKUP']:
         try:
             model = load_trained_model(config['BACKUP_MODEL_PATH'])
@@ -113,22 +114,24 @@ def PRE_dqn_training_one_net_two_players():
 def PRE_dqn_training_two_nets_two_players():
     catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
 
-    config = load_json_file('config.json')
+    config = load_json_file('config_multiplayer_many_nets.json')
     if config['RESTORE_BACKUP']:
         try:
-            model = load_trained_model(config['BACKUP_MODEL_PATH'])
+            m1_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'model1.h5')
+            m2_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'model2.h5')
+            models = [load_trained_model(path) for path in (m1_backup_path, m2_backup_path)]
         except (FileNotFoundError, OSError):
-            model = get_test_model(2)
+            models = [get_test_model(1) for _ in range(2)]
         try:
             last_epoch_stats_file_path = get_path_to_file_last_in_numerical_order(config['BACKUP_STATS_DIR_PATH'])
             restored_train_stats = load_json_file(last_epoch_stats_file_path)
         except (FileNotFoundError, OSError, StopIteration):
             restored_train_stats = None
     else:
-        model = get_test_model(2)
+        models = [get_test_model(1) for _ in range(2)]
         restored_train_stats = None
 
-    agent = DQNPREMultiplayerAgent(model, 100000)
+    agent = DQNPREMMultiplayerMultinetAgent(100000, models=models)
     agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None,
                 restored_training_stats=restored_train_stats)
 

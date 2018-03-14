@@ -15,8 +15,9 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
             self._models = models
         else:
             self._models = [model_generator() for _ in range(nb_models)]
-        self._memory = ProportionalPER(memory_size)
+        self._memories = [ProportionalPER(memory_size) for _ in range(len(self._models))]
 
+    # TODO: Deal somehow with model restoration
     def train(self, game, epochs=1000, batch_size=50, gamma=0.9, epsilon=[1, 0.1], epsilon_rate=0.5, observe=0,
               visualizer=None, recorder=None, reset_memory=False, save_model=False, restored_training_stats=None,
               backup_models_save_dir_path=None, backup_stats_save_dir_path=None):
@@ -74,31 +75,33 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
                 next_frames = np.roll(last_frames, axis=2, shift=-1)
                 next_frames[:, :, -1] = next_state
 
-                transistion = [last_frames, actions, reward, next_frames]
-                error = self._get_batch_preds_and_errors([(0, transistion)], game.nb_actions, game.nb_players)[2][0]
-                self._memory.remember(error, transistion)
+                for model_idx in range(len(self._models)):
+                    transistion = [last_frames, [actions[model_idx]], reward, next_frames]
+                    error = self._get_batch_preds_and_errors([(0, transistion)], model_idx)[2][0]
+                    self._memories[model_idx].remember(error, transistion)
 
                 state = next_state
 
-                if epoch >= observe and len(self._memory) >= batch_size:
+                for model_idx in range(len(self._models)):
+                    if epoch >= observe and len(self._memories[model_idx]) >= batch_size:
 
-                    batch = self._memory.get_batch(batch_size)
-                    if batch:
-                        X, y, errors = self._get_batch_preds_and_errors(batch, game.nb_actions, game.nb_players)
+                        batch = self._memories[model_idx].get_batch(batch_size)
+                        if batch:
+                            X, y, errors = self._get_batch_preds_and_errors(batch, model_idx)
 
-                        # update errors
-                        for i in range(len(batch)):
-                            idx = batch[i][0]
-                            self._memory.update(idx, errors[i])
+                            # update errors
+                            for i in range(len(batch)):
+                                idx = batch[i][0]
+                                self._memories[model_idx].update(idx, errors[i])
 
-                        batch_train_loss = self._model.train_on_batch(X, y)[0]
-                        loss += float(batch_train_loss)
+                            batch_train_loss = self._models[model_idx].train_on_batch(X, y)[0]
+                            loss += float(batch_train_loss)
 
                 # update exploration/exploitation ratio
                 if epsilon > final_epsilon and epsilon >= observe:
                     epsilon -= delta
                 # t2 = default_timer()
-                print('Training, epoch: {}, loss: {}, game score: {}, total wins: {}'.format(epoch,
+                print('Training, epoch: {}, loss (total, all models): {}, game score: {}, total wins: {}'.format(epoch,
                                                                                              loss,
                                                                                              game.get_score(),
                                                                                              win_count))
@@ -114,11 +117,13 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
                 'game_score': game.get_score(),
                 'win_count': win_count
             }
-            current_epoch_file_path = osp.join(backup_stats_save_path, f'epoch{epoch}.json')
+            current_epoch_file_path = osp.join(backup_stats_save_dir_path, f'epoch{epoch}.json')
             save_json_file(current_epoch_file_path, epoch_stats)
 
             if epoch % 500 == 0:
-                self._model.save(backup_model_save_path)
+                for i, model in enumerate(self._models):
+                    model_save_path = osp.join(backup_models_save_dir_path, f'net{i}.h5')
+                    model.save(model_save_path)
 
         self._model.save('final_model.h5')
 
@@ -156,48 +161,38 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
                 win_count += 1
 
     # TODO: Much TODO
-    def _get_batch_preds_and_errors(self, batch, env_possible_actions,
-                                    env_players):  # batch consist of tuples (idx, transistion)
-        nn_input_shape = (
-        80, 80, 6)  # self._model.layers[0].input_shape  # wild guess, we shall see if its work (doesn't, magic const)
+    def _get_batch_preds_and_errors(self, batch, model_idx):  # batch consist of tuples (idx, transistion)
+        nn_input_shape = (80, 80, 6)  # self._model.layers[0].input_shape  # wild guess, we shall see if its work (doesn't, magic const)
         no_state = np.zeros(nn_input_shape)
         gamma = 0.9
 
         states = np.array([row[1][0] for row in batch])
         next_states = np.array([(no_state if row[1][3] is None else row[1][3]) for row in batch])
 
-        preds = self._model.predict(states)
-        next_preds = self._model.predict(next_states)
+        preds = self._models[model_idx].predict(states)
+        next_preds = self._models[model_idx].predict(next_states)
 
         x = np.zeros(((len(batch),) + nn_input_shape))
-        y = np.zeros((len(batch), env_possible_actions * env_players))
+        y = np.zeros((len(batch), 5))  # 5 = env possible actions
         errors = np.zeros(len(batch))
-
-        # Note:
-        # transistion = [last_frames, actions, reward, next_frames]
-        # actions = [argmax for each env_nb_actions in net output], earlier it was one int - requires changes
 
         for i in range(len(batch)):
             transistion = batch[i][1]
             state = transistion[0]
-            actions = transistion[1]
+            action = transistion[1]
             reward = transistion[2]
             next_state = transistion[3]
 
             current_state_preds = preds[i]
-
-            # transform actions from game representation to indexes in flattened preds vector
-            actions = [i * env_possible_actions + action for i, action in enumerate(actions)]
-            actions_q = current_state_preds[actions]
-
+            action_q = current_state_preds[action]
             if next_state is None:
-                current_state_preds[actions] = reward
+                current_state_preds[action] = reward
             else:
-                current_state_preds[actions] = reward + gamma * np.max(next_preds[i])  # ???
+                current_state_preds[action] = reward + gamma * np.max(next_preds[i])
 
             x[i] = state
             y[i] = current_state_preds
-            errors[i] = np.sum(np.abs(actions_q - current_state_preds[actions]))
+            errors[i] = abs(action_q - current_state_preds[action])
 
         return x, y, errors
         # TODO move gamma, etc where they should actually be, not as consts/magics in script
