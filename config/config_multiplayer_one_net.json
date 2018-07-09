@@ -1,4 +1,0 @@
-{"RESTORE_BACKUP": "True",
-"BACKUP_MODEL_PATH": "./backup_model.h5",
-"BACKUP_STATS_DIR_PATH": "./backup_stats",
-"FINAL_MODEL_PATH": "./final_model.h5"}

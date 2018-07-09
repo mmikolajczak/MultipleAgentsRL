@@ -10,6 +10,7 @@ from utils.others import get_path_to_file_last_in_numerical_order
 import numpy as np
 import enum
 import os.path as osp
+import warnings
 
 
 def game_initial_test_demo():
@@ -62,24 +63,27 @@ def _single_dqn_test_demo():
     model = load_trained_model('final.h5')
 
     agent = DQNAgent(model, 10000)
-    agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=visualizer)  # current version
+    agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=visualizer)
 
 
-def _PRE_dqn_training():
+def _PRE_dqn_train(config):
     catch_game_object = MultiPlayerCatch(1, board_size=20, food_spawn_rate=0.05)
 
-    config = load_json_file('config.json')
     if config['RESTORE_BACKUP']:
         try:
             model = load_trained_model(config['BACKUP_MODEL_PATH'])
         except (FileNotFoundError, OSError):
             model = get_test_model(1)
+            warnings.warn('Couldn\t found/load model under provided path - initialized new instance.', RuntimeWarning)
         try:
             last_epoch_stats_file_path = get_path_to_file_last_in_numerical_order(config['BACKUP_STATS_DIR_PATH'])
             restored_train_stats = load_json_file(last_epoch_stats_file_path)
         except (FileNotFoundError, OSError, StopIteration):
             restored_train_stats = None
+            warnings.warn('Couldn\t found/load backup stats under provided path - initialized new instance.',
+                          RuntimeWarning)
     else:
+        warnings.warn('Restore backup value is false - initialized new instances.', RuntimeWarning)
         model = get_test_model(1)
         restored_train_stats = None
 
@@ -88,33 +92,35 @@ def _PRE_dqn_training():
                 restored_training_stats=restored_train_stats)
 
 
-def _PRE_dqn_training_one_net_two_players():
+def _PRE_dqn_one_net_two_players_train(config):
     catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
 
-    config = load_json_file('config_multiplayer_one_net.json')
     if config['RESTORE_BACKUP']:
         try:
             model = load_trained_model(config['BACKUP_MODEL_PATH'])
         except (FileNotFoundError, OSError):
             model = get_test_model(2)
+            warnings.warn('Couldn\t found/load model under provided path - initialized new instance.', RuntimeWarning)
         try:
             last_epoch_stats_file_path = get_path_to_file_last_in_numerical_order(config['BACKUP_STATS_DIR_PATH'])
             restored_train_stats = load_json_file(last_epoch_stats_file_path)
         except (FileNotFoundError, OSError, StopIteration):
             restored_train_stats = None
+            warnings.warn('Couldn\t found/load backup stats under provided path - initialized new instance.',
+                          RuntimeWarning)
     else:
         model = get_test_model(2)
         restored_train_stats = None
+        warnings.warn('Restore backup value is false - initialized new instances.', RuntimeWarning)
 
     agent = DQNPREMultiplayerAgent(model, 100000)
     agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None,
                 restored_training_stats=restored_train_stats)
 
 
-def _PRE_dqn_training_two_nets_two_players():
+def _PRE_dqn_two_nets_two_players_train(config):
     catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
 
-    config = load_json_file('config_multiplayer_many_nets.json')
     if config['RESTORE_BACKUP']:
         try:
             m1_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'net0.h5')
@@ -122,32 +128,68 @@ def _PRE_dqn_training_two_nets_two_players():
             models = [load_trained_model(path) for path in (m1_backup_path, m2_backup_path)]
         except (FileNotFoundError, OSError):
             models = [get_test_model(1) for _ in range(2)]
+            warnings.warn('Couldn\t found/load models under provided path - initialized new instance.', RuntimeWarning)
         try:
             last_epoch_stats_file_path = get_path_to_file_last_in_numerical_order(config['BACKUP_STATS_DIR_PATH'])
             restored_train_stats = load_json_file(last_epoch_stats_file_path)
         except (FileNotFoundError, OSError, StopIteration):
             restored_train_stats = None
+            warnings.warn('Couldn\t found/load backup stats under provided path - initialized new instance.',
+                          RuntimeWarning)
     else:
         models = [get_test_model(1) for _ in range(2)]
         restored_train_stats = None
+        warnings.warn('Restore backup value is false - initialized new instances.', RuntimeWarning)
 
     agent = DQNPREMMultiplayerMultinetAgent(100000, models=models)
     agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=None,
                 restored_training_stats=restored_train_stats)
 
 
+def _PRE_dqn_one_net_two_players_play(config):
+    catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
+
+    try:
+        model = load_trained_model(config['BACKUP_MODEL_PATH'])
+    except (FileNotFoundError, OSError):
+        raise
+
+    agent = DQNPREMultiplayerAgent(model, 100000)
+    visualizer = ImageStateVisualizator('MPCatch visualization', 10)
+    agent.play(catch_game_object, epochs=10, visualizer=visualizer)
+
+
+def _PRE_dqn_two_nets_two_players_play(config):
+    catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
+
+    try:
+        m1_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'net0.h5')
+        m2_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'net1.h5')
+        models = [load_trained_model(path) for path in (m1_backup_path, m2_backup_path)]
+    except (FileNotFoundError, OSError):
+        raise
+
+    agent = DQNPREMMultiplayerMultinetAgent(100000, models=models)
+    visualizer = ImageStateVisualizator('MPCatch visualization', 10)
+    agent.play(catch_game_object, epochs=10, visualizer=visualizer)
+
+
 class Experiments(enum.IntEnum):
-    PRE_DQN_CATCH_TWO_PLAYERS_ONE_NET = 1,
-    PRE_DQN_CATCH_TWO_PLAYERS_MANY_NETS = 2,
-    DQN_SINGLE_PLAYER = 3,
-    DQN_PRE_SINGLE_PLAYER = 4
+    PRE_DQN_CATCH_TWO_PLAYERS_ONE_NET_TRAIN = 1,
+    PRE_DQN_CATCH_TWO_PLAYERS_MANY_NETS_TRAIN = 2,
+    DQN_SINGLE_PLAYER_TRAIN = 3,
+    DQN_PRE_SINGLE_PLAYER_TRAIN = 4,
+    PRE_DQN_CATCH_TWO_PLAYERS_ONE_NET_PLAY = 5,
+    PRE_DQN_CATCH_TWO_PLAYERS_MANY_NETS_PLAY = 6
 
 
-def run_experiment(experiment_id):
+def run_experiment(experiment_id, config: dict):
     run_experiment.available_experiments = {
-        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_ONE_NET:  _PRE_dqn_training_one_net_two_players,
-        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_MANY_NETS: _PRE_dqn_training_two_nets_two_players,
-        Experiments.DQN_SINGLE_PLAYER: _single_dqn_test_demo,
-        Experiments.DQN_PRE_SINGLE_PLAYER: _PRE_dqn_training
+        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_ONE_NET_TRAIN:  _PRE_dqn_one_net_two_players_train,
+        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_MANY_NETS_TRAIN: _PRE_dqn_two_nets_two_players_train,
+        Experiments.DQN_SINGLE_PLAYER_TRAIN: _single_dqn_test_demo,
+        Experiments.DQN_PRE_SINGLE_PLAYER_TRAIN: _PRE_dqn_train,
+        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_ONE_NET_PLAY: _PRE_dqn_one_net_two_players_play,
+        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_MANY_NETS_PLAY: _PRE_dqn_two_nets_two_players_play
     }
-    run_experiment.available_experiments[experiment_id]()
+    run_experiment.available_experiments[experiment_id](config)

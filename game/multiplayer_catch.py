@@ -128,10 +128,10 @@ class MultiPlayerCatch(Game):
         other_players_positions = [[pl.x, pl.y] for pl in self._players if pl is not player]
         return [new_x, new_y] in other_players_positions
 
-    def get_state(self):
+    def get_state(self, cvt_to_gray=True):
         # resized for nn - temporary
-        state_gray = cv2.cvtColor(self._state, cv2.COLOR_BGR2GRAY)
-        resized = cv2.resize(state_gray, None, None, fx=4, fy=4)
+        state = cv2.cvtColor(self._state, cv2.COLOR_BGR2GRAY) if cvt_to_gray else self._state
+        resized = cv2.resize(state, None, None, fx=4, fy=4)
         return resized
 
     def get_score(self):

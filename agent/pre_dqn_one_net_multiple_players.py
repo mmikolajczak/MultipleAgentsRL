@@ -116,7 +116,7 @@ class DQNPREMultiplayerAgent(Agent):
 
         self._model.save('final_model.h5')
 
-    def play(self, game, epochs, epsilon=0, visualizer=None, recorder=None):
+    def play(self, game, epochs, visualizer=None, recorder=None):
         win_count = 0
 
         for epoch in range(epochs):
@@ -124,22 +124,24 @@ class DQNPREMultiplayerAgent(Agent):
             game.reset()
             game_over = False
             state = game.get_state()
+            last_frames = np.zeros((80, 80, 6), dtype=np.uint8)
 
             while not game_over:
-                # do stuff
-                if np.random.random() < epsilon:
-                    action = np.random.randint(0, game.nb_actions)
-                else:
-                    q_values = self._model.predict(np.expand_dims(state, axis=0))[0]
-                    action = np.argmax(q_values)
+                q_values = self._model.predict(np.expand_dims(last_frames, axis=0))[0]
+                actions = [np.argmax(q_values[player_idx * game.nb_actions:
+                                              (player_idx + 1) * game.nb_actions])
+                           for player_idx in range(game.nb_players)]
 
-                game.play([action])
+                game.play(actions)
                 state = game.get_state()
 
+                last_frames = np.roll(last_frames, axis=2, shift=-1)
+                last_frames[:, :, -1] = state
                 game_over = game.game_is_over
                 # visualization of current state
                 if visualizer:
-                    visualizer.visualize_state(state)
+                    state_color = game.get_state(cvt_to_gray=False)
+                    visualizer.visualize_state(state_color)
 
                 if recorder:
                     additional_info = {'game_no': epoch + 1, 'game_name': game.name, 'game_score': game.get_score()}
