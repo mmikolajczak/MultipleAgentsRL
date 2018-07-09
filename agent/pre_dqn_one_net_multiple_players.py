@@ -48,7 +48,6 @@ class DQNPREMultiplayerAgent(Agent):
                     q_values = self._model.predict(np.expand_dims(last_frames, axis=0))[0]  # getting rid of additional nb_samples dimension in predict
                     actions = [np.argmax(q_values[player_idx * game.nb_actions:
                     (player_idx + 1) * game.nb_actions]) for player_idx in range(game.nb_players)]
-                # print(actions)
 
                 if visualizer:
                     visualizer.visualize_state(state)

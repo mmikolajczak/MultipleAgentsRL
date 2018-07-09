@@ -54,7 +54,7 @@ def load_trained_model(path):
     return model
 
 
-def single_dqn_test_demo():
+def _single_dqn_test_demo():
     catch_game_object = MultiPlayerCatch(1, board_size=20, food_spawn_rate=0.05)
     visualizer = ImageStateVisualizator('MPCatch visualization', 10)
     recorder = ImageStateRecorder('MPCatch_rgb_trained_network_results')
@@ -65,7 +65,7 @@ def single_dqn_test_demo():
     agent.train(catch_game_object, epochs=100000, batch_size=50, gamma=0.9, epsilon=0.1, visualizer=visualizer)  # current version
 
 
-def PRE_dqn_training():
+def _PRE_dqn_training():
     catch_game_object = MultiPlayerCatch(1, board_size=20, food_spawn_rate=0.05)
 
     config = load_json_file('config.json')
@@ -88,7 +88,7 @@ def PRE_dqn_training():
                 restored_training_stats=restored_train_stats)
 
 
-def PRE_dqn_training_one_net_two_players():
+def _PRE_dqn_training_one_net_two_players():
     catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
 
     config = load_json_file('config_multiplayer_one_net.json')
@@ -111,14 +111,14 @@ def PRE_dqn_training_one_net_two_players():
                 restored_training_stats=restored_train_stats)
 
 
-def PRE_dqn_training_two_nets_two_players():
+def _PRE_dqn_training_two_nets_two_players():
     catch_game_object = MultiPlayerCatch(2, board_size=20, food_spawn_rate=0.05)
 
     config = load_json_file('config_multiplayer_many_nets.json')
     if config['RESTORE_BACKUP']:
         try:
-            m1_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'model1.h5')
-            m2_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'model2.h5')
+            m1_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'net0.h5')
+            m2_backup_path = osp.join(config['BACKUP_MODELS_PATH'], 'net1.h5')
             models = [load_trained_model(path) for path in (m1_backup_path, m2_backup_path)]
         except (FileNotFoundError, OSError):
             models = [get_test_model(1) for _ in range(2)]
@@ -145,9 +145,9 @@ class Experiments(enum.IntEnum):
 
 def run_experiment(experiment_id):
     run_experiment.available_experiments = {
-        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_ONE_NET:  PRE_dqn_training_one_net_two_players,
-        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_MANY_NETS: PRE_dqn_training_two_nets_two_players,
-        Experiments.DQN_SINGLE_PLAYER: single_dqn_test_demo,
-        Experiments.DQN_PRE_SINGLE_PLAYER: PRE_dqn_training
+        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_ONE_NET:  _PRE_dqn_training_one_net_two_players,
+        Experiments.PRE_DQN_CATCH_TWO_PLAYERS_MANY_NETS: _PRE_dqn_training_two_nets_two_players,
+        Experiments.DQN_SINGLE_PLAYER: _single_dqn_test_demo,
+        Experiments.DQN_PRE_SINGLE_PLAYER: _PRE_dqn_training
     }
     run_experiment.available_experiments[experiment_id]()
