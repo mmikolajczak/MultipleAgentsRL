@@ -3,7 +3,6 @@ import numpy as np
 from memory.prioritized_experiance_replay import ProportionalPER
 import os
 import os.path as osp
-from timeit import default_timer
 from utils.json import save_json_file
 
 
@@ -43,11 +42,9 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
 
             game_over = False
             state = game.get_state()
-
             last_frames = np.zeros((80, 80, 6), dtype=np.uint8)  # for using multiple frames as memory state
 
             while not game_over:
-                # t1 = default_timer()
                 if np.random.random() < epsilon:
                     actions = [np.random.randint(0, game.nb_actions) for _ in range(game.nb_players)]
                 else:
@@ -55,7 +52,6 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
                     q_values = [model.predict(net_input_)[0] for model in
                                 self._models]  # [0] -  getting rid of additional nb_samples dimension in predict
                     actions = np.array([np.argmax(single_net_q_values) for single_net_q_values in q_values])
-                # print(actions)
 
                 if visualizer:
                     visualizer.visualize_state(state)
@@ -100,13 +96,11 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
                 # update exploration/exploitation ratio
                 if epsilon > final_epsilon and epsilon >= observe:
                     epsilon -= delta
-                # t2 = default_timer()
                 print('Training, epoch: {}, loss (total, all models): {}, game score: {}, total wins: {}'.format(epoch,
                                                                                              loss,
                                                                                              game.get_score(),
                                                                                              win_count))
 
-                # print('Time elapsed:', default_timer() - t1)
             if game.game_is_won:
                 win_count += 1
 
@@ -125,7 +119,8 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
                     model_save_path = osp.join(backup_models_save_dir_path, f'net{i}.h5')
                     model.save(model_save_path)
 
-        self._model.save('final_model.h5')
+        for i, model in enumerate(self._models):
+            model.save(f'final_model_net_{i}.h5')
 
     def play(self, game, epochs, epsilon=0, visualizer=None, recorder=None):
         win_count = 0
@@ -162,7 +157,7 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
 
     # TODO: Much TODO
     def _get_batch_preds_and_errors(self, batch, model_idx):  # batch consist of tuples (idx, transistion)
-        nn_input_shape = (80, 80, 6)  # self._model.layers[0].input_shape  # wild guess, we shall see if its work (doesn't, magic const)
+        nn_input_shape = (80, 80, 6)
         no_state = np.zeros(nn_input_shape)
         gamma = 0.9
 
@@ -173,7 +168,7 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
         next_preds = self._models[model_idx].predict(next_states)
 
         x = np.zeros(((len(batch),) + nn_input_shape))
-        y = np.zeros((len(batch), 5))  # 5 = env possible actions
+        y = np.zeros((len(batch), 5))  # 5 = env possible actions, TODO: fix it
         errors = np.zeros(len(batch))
 
         for i in range(len(batch)):

@@ -3,7 +3,6 @@ import numpy as np
 from memory.prioritized_experiance_replay import ProportionalPER
 import os
 import os.path as osp
-from timeit import default_timer
 from utils.json import save_json_file
 
 
@@ -91,13 +90,10 @@ class DQNPREMultiplayerAgent(Agent):
                 # update exploration/exploitation ratio
                 if epsilon > final_epsilon and epsilon >= observe:
                     epsilon -= delta
-                #t2 = default_timer()
                 print('Training, epoch: {}, loss: {}, game score: {}, total wins: {}'.format(epoch,
                                                                                              loss,
                                                                                              game.get_score(),
                                                                                              win_count))
-
-                #print('Time elapsed:', default_timer() - t1)
             if game.game_is_won:
                 win_count += 1
 
@@ -123,7 +119,6 @@ class DQNPREMultiplayerAgent(Agent):
             # restoration/initialization of initial environment state
             game.reset()
             game_over = False
-            state = game.get_state()
             last_frames = np.zeros((80, 80, 6), dtype=np.uint8)
 
             while not game_over:

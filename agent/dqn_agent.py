@@ -1,7 +1,6 @@
 from .agent import Agent
 import numpy as np
 from memory.experiance_replay import ExperienceReplay
-from timeit import default_timer
 
 
 class DQNAgent(Agent):
@@ -29,7 +28,6 @@ class DQNAgent(Agent):
             state = game.get_state()
 
             while not game_over:
-                #t1 = default_timer()
                 if np.random.random() < epsilon:
                     action = np.random.randint(0, game.nb_actions)
                 else:
@@ -65,7 +63,6 @@ class DQNAgent(Agent):
                 # update exploration/exploitation ratio
                 if epsilon > final_epsilon and epsilon >= observe:
                     epsilon -= delta
-                #t2 = default_timer()
                 print('Training, epoch: {}, loss: {}, game score: {}, total wins: {}'.format(epoch,
                                                                                              loss,
                                                                                              game.get_score(),
