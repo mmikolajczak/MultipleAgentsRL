@@ -130,22 +130,31 @@ class DQNPREMMultiplayerMultinetAgent(Agent):
             game.reset()
             game_over = False
             state = game.get_state()
+            last_frames = np.zeros((80, 80, 6), dtype=np.uint8)
 
             while not game_over:
                 # do stuff
                 if np.random.random() < epsilon:
-                    action = np.random.randint(0, game.nb_actions)
+                    actions = [np.random.randint(0, game.nb_actions) for _ in range(game.nb_players)]
                 else:
-                    q_values = self._model.predict(np.expand_dims(state, axis=0))[0]
-                    action = np.argmax(q_values)
+                    net_input_ = np.expand_dims(last_frames, axis=0)
+                    q_values = [model.predict(net_input_)[0] for model in
+                                self._models]  # [0] -  getting rid of additional nb_samples dimension in predict
+                    actions = np.array([np.argmax(single_net_q_values) for single_net_q_values in q_values])
 
-                game.play([action])
-                state = game.get_state()
+                game.play(actions)
 
+                next_state = game.get_state()
+                last_frames = np.roll(last_frames, axis=2, shift=-1)
+                last_frames[:, :, -1] = state
+                next_frames = np.roll(last_frames, axis=2, shift=-1)
+                next_frames[:, :, -1] = next_state
+
+                state = next_state
                 game_over = game.game_is_over
                 # visualization of current state
                 if visualizer:
-                    visualizer.visualize_state(state)
+                    visualizer.visualize_state(game.get_state(cvt_to_gray=False))
 
                 if recorder:
                     additional_info = {'game_no': epoch + 1, 'game_name': game.name, 'game_score': game.get_score()}
